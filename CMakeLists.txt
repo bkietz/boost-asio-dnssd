@@ -4,14 +4,17 @@ project(boost-asio-dnssd CXX)
 # CMake options
 cmake_minimum_required(VERSION 2.8)
 include(CTest)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 ###############
 # C++ options
-set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
+if(UNIX)
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=gnu++0x")
+endif()
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
 find_package(Boost 1.54 REQUIRED) # for boost::asio::spawn
 include_directories(${Boost_INCLUDE_DIRS})
-include_directories(${CMAKE_SOURCE_DIR}/include)
+link_directories(${Boost_LIBRARY_DIRS})
 
 ###############
 # Test subdir
