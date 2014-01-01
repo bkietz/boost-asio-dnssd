@@ -1,5 +1,4 @@
 #include <gtest/gtest.h>
-#include <gmock/gmock.h>
 
 #include <avahi-client/client.h>
 #include <avahi-client/lookup.h>
@@ -8,10 +7,28 @@
 #include <avahi-common/malloc.h>
 #include <avahi-common/alternative.h>
 
+#include <boost/lockfree/spsc_queue.hpp>
+#include <string>
+#include <sstream>
+#include <iostream>
+
 #include <boost/asio.hpp>
 #include <boost/system/error_code.hpp>
 #include "boost/asio/ip/dnssd/impl/avahi_poll.hpp"
 using boost::system::error_code;
+using std::string;
+using std::stringstream;
+using std::cout; using std::endl; using std::cerr;
+
+boost::lockfree::spsc_queue<string> found_queue(1024);
+
+/// This is a test with callbacks lifted (almost) directly from the
+/// [Avahi examples](http://avahi.org/download/doxygen/examples.html)
+/// as a basic test of the implementation of AvahiPoll.
+
+static void create_services(AvahiClient *c);
+static AvahiEntryGroup *group = NULL;
+static char *name = "Hello World";
 
 static void browse_callback(
     AvahiServiceBrowser *b,
@@ -28,6 +45,7 @@ static void browse_callback(
     assert(b);
 
     /* Called whenever a new services becomes available on the LAN or is removed from the LAN */
+    stringstream found;
 
     switch (event) {
         case AVAHI_BROWSER_FAILURE:
@@ -35,6 +53,9 @@ static void browse_callback(
             return;
 
         case AVAHI_BROWSER_NEW:
+	    found << name << '.' << type << '.' << domain << '.';
+	    found_queue.push(found.str());
+	    cerr << found.str() << endl;
             fprintf(stderr, "(Browser) NEW: service '%s' of type '%s' in domain '%s'\n", name, type, domain);
             break;
 
@@ -48,14 +69,6 @@ static void browse_callback(
             break;
     }
 }
-
-
-
-static void create_services(AvahiClient *c);
-
-
-static AvahiEntryGroup *group = NULL;
-static char *name = "Hello World";
 
 static void entry_group_callback(AvahiEntryGroup *g, AvahiEntryGroupState state, AVAHI_GCC_UNUSED void *userdata) {
     assert(g == group || group == NULL);
@@ -192,11 +205,6 @@ static void client_callback(AvahiClient *c, AvahiClientState state, AVAHI_GCC_UN
     }
 }
 
-
-
-
-
-
 TEST (AvahiRegisterBrowse, AvahiTests) {
 
   boost::asio::io_service io;
@@ -215,12 +223,18 @@ TEST (AvahiRegisterBrowse, AvahiTests) {
 
   io.run();
 
-  ASSERT_EQ(1,2) << "Test to make sure that the 'Hello World' service was registered+browsed";
+  stringstream ours;
+  ours << name << '.' << "_http._tcp" << '.' << "local" << '.';
+  string popped;
+  while(found_queue.pop(popped)) {
+	  if(popped == ours.str()) {
+		  SUCCEED() << "We found the service we published ourselves";
+		  return;
+	  }
+  }
+  FAIL() << "The service we published was not discovered...";
 
 }
-
-
-
 
 int main(int argc, char *argv[]) {
 	::testing::InitGoogleTest(&argc, argv);

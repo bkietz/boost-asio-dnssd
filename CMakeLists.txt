@@ -4,24 +4,16 @@ project(boost-asio-dnssd CXX)
 # CMake options
 cmake_minimum_required(VERSION 2.8)
 include(CTest)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake/modules)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
 ###############
 # C++ options
-# Boost version 1.55.0
-set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
-include_directories(${CMAKE_SOURCE_DIR})
+set(CMAKE_CXX_FLAGS "-std=c++0x ${CMAKE_CXX_FLAGS}")
+find_package(Boost 1.54 REQUIRED) # for boost::asio::spawn
+include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${CMAKE_SOURCE_DIR}/include)
 
 ###############
+# Test subdir
 add_subdirectory(test)
 
-###############
-# Test options
-set(GTESTLIBS -lgtest -lgmock -pthread)
-
-# convenience macro for test definition
-function(cxx_test test_name)
-	add_executable(${test_name} "${test_name}.cpp")
-	target_link_libraries(${test_name} ${GTESTLIBS})
-	add_test(${test_name} ${test_name} "--gtest_output=xml:${test_name}.xml")
-endfunction(cxx_test)
