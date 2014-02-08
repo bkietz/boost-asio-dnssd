@@ -1,7 +1,7 @@
 #include <boost/asio/detail/config.hpp>
 #include <boost/asio/async_result.hpp>
 
-#include <boost/asio/ip/dnssd/dnssd_service.hpp>
+#include <boost/asio/ip/dnssd/registration_service.hpp>
 #include <boost/asio/ip/dnssd/record_set.hpp>
 
 
@@ -36,7 +36,7 @@ public:
   }
 };
 
-typedef basic_registration<dnssd_service> registration;
+typedef basic_registration<registration_service> registration;
 
 } // namespace dnssd
 } // namespace ip

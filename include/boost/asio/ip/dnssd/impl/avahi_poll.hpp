@@ -9,6 +9,7 @@
  */
 #include <boost/asio.hpp>
 #include <boost/asio/steady_timer.hpp>
+#include <boost/phoenix.hpp>
 #include <chrono>
 #include <utility>
 
@@ -31,8 +32,8 @@ struct AvahiWatch {
   void *userdata_;
 
   AvahiWatch(
-    const AvahiPoll *api, 
-    int fd, 
+    const AvahiPoll *api,
+    int fd,
     AvahiWatchEvent event,
     AvahiWatchCallback callback,
     void *userdata
@@ -47,7 +48,7 @@ struct AvahiWatch {
     update(event);
   }
 
-  void handler(boost::system::error_code ec) {
+  void handler(boost::system::error_code ec, AvahiWatchEvent event) {
     if(ec) return;
     callback_(this, socket_.native_handle(), event_, userdata_);
     monitor(event_);
@@ -59,18 +60,20 @@ struct AvahiWatch {
     using boost::asio::null_buffers;
     using boost::system::error_code; 
 
+//   val(this)->*(&AvahiWatch::handler, error, val(AVAHI_WATCH_IN));
+//   socket_.async_read_some(null_buffers(), bind(&AvahiWatch::handler, this, error, val(AVAHI_WATCH_IN)));
     if(events & AVAHI_WATCH_IN)
     socket_.async_read_some(null_buffers(),
       [this] (error_code ec, size_t) { 
         event_ = AVAHI_WATCH_IN;
-        handler(ec); 
+        handler(ec, event_);
       });
 
     if(events & AVAHI_WATCH_OUT)
     socket_.async_write_some(null_buffers(),
       [this] (error_code ec, size_t) { 
         event_ = AVAHI_WATCH_OUT;
-        handler(ec); 
+        handler(ec, event_);
       });
   }
 
@@ -179,15 +182,19 @@ return new AvahiTimeout(api, tv, callback, userdata);
 // interface to it, as required by avahi_client_new()
 // Whatever owns the AvahiClient must free this.
 const AvahiPoll* avahi_io_service_poll_wrap(boost::asio::io_service& io) {
-  return new AvahiPoll {
-    &io, //userdata
-    watch_new,
-    watch_update,
-    watch_get_events,
-    watch_free,
-    timeout_new,
-    timeout_update,
-    timeout_free
-  };
+  auto avahi_poll = new AvahiPoll;
+
+  avahi_poll->userdata         = static_cast<void *>(&io);
+
+  avahi_poll->watch_new        = watch_new;
+  avahi_poll->watch_update     = watch_update;
+  avahi_poll->watch_get_events = watch_get_events;
+  avahi_poll->watch_free       = watch_free;
+
+  avahi_poll->timeout_new      = timeout_new;
+  avahi_poll->timeout_update   = timeout_update;
+  avahi_poll->timeout_free     = timeout_free;
+
+  return avahi_poll;
 };
 

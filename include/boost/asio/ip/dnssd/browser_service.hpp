@@ -1,7 +1,16 @@
 #include <boost/asio/detail/config.hpp>
 #include <boost/asio/async_result.hpp>
 
-#include <boost/asio/ip/dnssd/browser_service.hpp>
+// in .../impl/browser.hpp:
+// #if defined( AVAHI )
+// typedef avahi::browser browser_impl;
+// #elif defined( BONJOUR )
+// typedef bonjour::browser browser_impl;
+// #else
+// #error "No DNS-SD implementation found."
+// #endif
+#include <boost/asio/ip/dnssd/impl/browser.hpp>
+
 #include <boost/asio/ip/dnssd/record_set.hpp>
 #include <boost/asio/ip/dnssd/update.hpp>
 #include <boost/asio/ip/dnssd/stub.hpp>
@@ -13,47 +22,53 @@ namespace asio {
 namespace ip {
 namespace dnssd {
 
-template <typename BrowserService>
-class basic_browser
-  : public basic_io_object<BrowserService>
+class browser_service
+  : public io_service::service
 {
 public:
+  static io_service::id id;
 
-  explicit basic_browser(io_service& io,
-      std::string service_type,
-      std::string domain = "local")
-    : basic_io_object<BrowserService>(io)
+  typedef browser_impl implementation_type;
+
+  explicit browser_service(io_service& io)
   {
-    // call start_op here
+  }
+
+  ~browser_service()
+  {
+  }
+
+  void construct(implementation_type& impl)
+  {
+  }
+
+  void destroy(implementation_type& impl)
+  {
   }
 
   /// Wait for an browse update
   template <typename BrowseHandler>
   inline BOOST_ASIO_INITFN_RESULT_TYPE(BrowseHandler,
       void(boost::system::error_code, unique_ptr<update>))
-  async_browse(BOOST_ASIO_MOVE_ARG(BrowseHandler) handler)
+  async_browse(implementation_type& impl,
+      BOOST_ASIO_MOVE_ARG(BrowseHandler) handler)
   {
-    return this->get_service().async_browse(
-      this->get_implementation(),
-      BOOST_ASIO_MOVE_CAST(BrowseHandler)(handler));
   }
 
   /// Start an asynchronous lookup
   template <typename LookupHandler>
   inline BOOST_ASIO_INITFN_RESULT_TYPE(LookupHandler,
       void(boost::system::error_code))
-  async_lookup(const stub& s, record_set& r,
+  async_lookup(implementation_type& impl,
+      const stub& s, record_set& r,
       BOOST_ASIO_MOVE_ARG(LookupHandler) handler)
   {
-    return this->get_service().async_lookup(
-      this->get_implementation(), s, r,
-      BOOST_ASIO_MOVE_CAST(LookupHandler)(handler));
   }
 };
 
-typedef basic_browser<browser_service> browser;
 
 } // namespace dnssd
 } // namespace ip
 } // namespace asio
 } // namespace boost
+
