@@ -13,3 +13,6 @@ endfunction(cxx_test)
 
 cxx_test(basic)
 target_link_libraries(basic -lboost_system -lavahi-client -lavahi-common)
+
+cxx_test(record_set)
+
